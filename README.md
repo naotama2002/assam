@@ -23,6 +23,8 @@ options:
     Configuration Mode
   -p, --profile string
     AWS profile name (default: "default")
+  -w, --web
+    AWS management console in a browser
 ```
 
 Please be careful that assam overrides default profile in `.aws/credentials` by default.
