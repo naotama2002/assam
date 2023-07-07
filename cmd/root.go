@@ -187,7 +187,7 @@ func configureSettings(profile string) error {
 }
 
 func openBrowser() error {
-	o, err := aws.GetConsoleURL()
+	o, err := aws.NewAWSClient().GetConsoleURL()
 	if err != nil {
 		return err
 	}

@@ -15,23 +15,42 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 )
 
-// GetConsoleURL get AWS Management Console URL
-// ref: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_enable-console-custom-url.html
-func GetConsoleURL() (string, error) {
-	sess := createSession()
-	if sess == nil {
-		return "", errors.New("failed to get AWS session")
-	}
+// AWSClient is an interface for AWS operations
+type AWSClient interface {
+	GetConsoleURL() (string, error)
+}
 
-	amazonDomain := getConsoleDomain(*sess.Config.Region)
+// awsClient is the implementation of AWSClient interface
+type awsClient struct {
+	session *session.Session
+}
+
+// NewAWSClient creates a new AWSClient instance
+//
+//	By default NewSession will only load credentials from the shared credentials file (~/.aws/credentials).
+func NewAWSClient() AWSClient {
+	// Create session
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+
+	return &awsClient{
+		session: sess,
+	}
+}
+
+// GetConsoleURL returns the AWS Management Console URL
+// ref: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_enable-console-custom-url.html
+func (c *awsClient) GetConsoleURL() (string, error) {
+	amazonDomain := c.getConsoleDomain(*c.session.Config.Region)
 
 	// Create get signin token URL
-	creds, err := sess.Config.Credentials.Get()
+	creds, err := c.session.Config.Credentials.Get()
 	if err != nil {
 		return "", errors.New("failed to get AWS session")
 	}
 
-	token, err := getSinginToken(creds, amazonDomain)
+	token, err := c.getSinginToken(creds, amazonDomain)
 	if err != nil {
 		return "", err
 	}
@@ -42,20 +61,12 @@ func GetConsoleURL() (string, error) {
 		"Destination": []string{targetURL},
 		"SigninToken": []string{token},
 	}
+
 	return fmt.Sprintf("https://signin.%s/federation?%s", amazonDomain, params.Encode()), nil
 }
 
-// Create Session
-//
-//	By default NewSession will only load credentials from the shared credentials file (~/.aws/credentials).
-func createSession() *session.Session {
-	return session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
-}
-
-// Get console domain from region
-func getConsoleDomain(region string) string {
+// getConsoleDomain returns the console domain based on the region
+func (c *awsClient) getConsoleDomain(region string) string {
 	var amazonDomain string
 
 	if strings.HasPrefix(region, "us-gov-") {
@@ -68,8 +79,8 @@ func getConsoleDomain(region string) string {
 	return amazonDomain
 }
 
-// Get signin token
-func getSinginToken(creds credentials.Value, amazonDomain string) (string, error) {
+// getSinginToken retrieves the signin token
+func (c *awsClient) getSinginToken(creds credentials.Value, amazonDomain string) (string, error) {
 	urlCreds := map[string]string{
 		"sessionId":    creds.AccessKeyID,
 		"sessionKey":   creds.SecretAccessKey,
@@ -80,6 +91,7 @@ func getSinginToken(creds credentials.Value, amazonDomain string) (string, error
 	if err != nil {
 		return "", err
 	}
+
 	params := url.Values{
 		"Action":  []string{"getSigninToken"},
 		"Session": []string{string(bytes)},
@@ -99,21 +111,23 @@ func getSinginToken(creds credentials.Value, amazonDomain string) (string, error
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close() //nolint
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("request failed: %s", resp.Status)
 	}
 
 	// Extract a signin token from the response body.
-	token, err := getToken(resp.Body)
+	token, err := c.getToken(resp.Body)
 	if err != nil {
 		return "", err
 	}
+
 	return token, nil
 }
 
-func getToken(reader io.Reader) (string, error) {
+// getToken extracts the signin token from the response body
+func (c *awsClient) getToken(reader io.Reader) (string, error) {
 	type response struct {
 		SigninToken string
 	}
