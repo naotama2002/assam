@@ -93,8 +93,9 @@ func (c *awsClient) getSigninToken(creds credentials.Value, amazonDomain string)
 	}
 
 	params := url.Values{
-		"Action":  []string{"getSigninToken"},
-		"Session": []string{string(bytes)},
+		"Action":          []string{"getSigninToken"},
+		"DurationSeconds": []string{"900"}, // DurationSeconds minimum value
+		"Session":         []string{string(bytes)},
 	}
 	tokenRequest := fmt.Sprintf("https://signin.%s/federation?%s", amazonDomain, params.Encode())
 
