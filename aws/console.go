@@ -47,7 +47,7 @@ func (c *awsClient) GetConsoleURL() (string, error) {
 	// Create get signin token URL
 	creds, err := c.session.Config.Credentials.Get()
 	if err != nil {
-		return "", errors.New("failed to get AWS session")
+		return "", errors.New("failed to get aws credential: please authenticate with `assam`")
 	}
 
 	token, err := c.getSinginToken(creds, amazonDomain)
