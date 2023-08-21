@@ -50,7 +50,7 @@ func (c *awsClient) GetConsoleURL() (string, error) {
 		return "", errors.New("failed to get aws credential: please authenticate with `assam`")
 	}
 
-	token, err := c.getSinginToken(creds, amazonDomain)
+	token, err := c.getSigninToken(creds, amazonDomain)
 	if err != nil {
 		return "", err
 	}
@@ -80,7 +80,7 @@ func (c *awsClient) getConsoleDomain(region string) string {
 }
 
 // getSinginToken retrieves the signin token
-func (c *awsClient) getSinginToken(creds credentials.Value, amazonDomain string) (string, error) {
+func (c *awsClient) getSigninToken(creds credentials.Value, amazonDomain string) (string, error) {
 	urlCreds := map[string]string{
 		"sessionId":    creds.AccessKeyID,
 		"sessionKey":   creds.SecretAccessKey,
