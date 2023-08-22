@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"strings"
 
 	"github.com/cybozu/assam/aws"
 	"github.com/cybozu/assam/config"
@@ -186,23 +187,27 @@ func configureSettings(profile string) error {
 }
 
 func openBrowser() error {
-	o, err := aws.NewAWSClient().GetConsoleURL()
+	url, err := aws.NewAWSClient().GetConsoleURL()
 	if err != nil {
 		return err
 	}
 
 	var cmd string
+	var args []string
 	switch runtime.GOOS {
 	case "darwin":
 		cmd = "open"
+		args = []string{url}
 	case "windows":
-		cmd = "start"
+		cmd = "cmd"
+		args = []string{"/c", "start", strings.ReplaceAll(url, "&", "^&")}
 	case "linux":
 		cmd = "xdg-open"
+		args = []string{url}
 	}
 
 	if len(cmd) != 0 {
-		err = exec.Command(cmd, o).Run()
+		err = exec.Command(cmd, args...).Run()
 		if err != nil {
 			return err
 		}
